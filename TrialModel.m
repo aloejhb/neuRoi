@@ -168,7 +168,7 @@ classdef TrialModel < handle
             % Initialize ROI array
             self.roiVisible = true;
             mapSize = getMapSize(self);
-            self.roiArray = RoiFreehand.empty();
+            self.roiArray = roiFunc.RoiM.empty();
             self.roiTagMax = 0;
             
         end
@@ -461,7 +461,7 @@ classdef TrialModel < handle
         % or a structure containing position and imageSize
             
             if nargin == 2
-                if isa(varargin{1},'RoiFreehand')
+                if isa(varargin{1},'roiFunc.RoiM')
                     roi = varargin{1};
                 else
                     % TODO add ROI from mask
@@ -652,18 +652,20 @@ classdef TrialModel < handle
                 tag = tagArray(k);
                 if tag ~= 0
                     mask = maskImg == tag;
-                    poly = roiFunc.mask2poly(mask);
-                    if length(poly) > 1
-                        % TODO If the mask corresponds multiple polygon,
-                        % for simplicity,
-                        % take the largest polygon
-                        warning(sprintf('ROI %d has multiple components, only taking the largest one.',tag))
-                        pidx = find([poly.Length] == max([poly.Length]));
-                        poly = poly(pidx);
-                    end
-                    position = [poly.X',poly.Y'];
+                    % poly = roiFunc.mask2poly(mask);
+                    poly = bwboundaries(mask);
+                    % if length(poly) > 1
+                    %     % TODO If the mask corresponds multiple polygon,
+                    %     % for simplicity,
+                    %     % take the largest polygon
+                    %     warning(sprintf('ROI %d has multiple components, only taking the largest one.',tag))
+                    %     pidx = find([poly.Length] == max([poly.Length]));
+                    %     poly = poly(pidx);
+                    % end
+                    %position = [poly.X',poly.Y'];
+                    position = [poly{1}(:,2),poly{1}(:,1)];
                     roi = RoiFreehand(position);
-                    roi.tag = tag;
+                    roi.tag = double(tag);
                     roiArray(end+1) = roi;
                 end
             end

@@ -154,10 +154,12 @@ classdef TrialController < handle
             self.enableFreehandShortcut = false;
             rawRoi = imfreehand;
             if ~isempty(rawRoi)
-                position = rawRoi.getPosition();
+                axesPosition = rawRoi.getPosition();
+                disp(axesPosition)
                 mapAxes = self.view.guiHandles.mapAxes;
-                if ~isempty(position)
-                    freshRoi = RoiFreehand(mapAxes,position);
+                if ~isempty(axesPosition)
+                    pos = roiFunc.RoiM.computePosFromPatch(axesPosition,mapAxes);
+                    freshRoi = roiFunc.RoiM(pos);
                     self.model.addRoi(freshRoi);
                     self.model.selectSingleRoi('last');
                 else

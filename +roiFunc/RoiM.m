@@ -8,16 +8,17 @@ classdef RoiM
     end
     
     methods
-        function self = RoiM(position, varargin)
+        function self = RoiM(position,varargin)
             pa = inputParser;
             addRequired(pa,'position',@ismatrix);
-            addParameter(pa,'tag','',@ischar);
+            addParameter(pa,'tag','',@isnumeric);
             parse(pa,position,varargin{:})
             pr = pa.Results;
                 
             if isempty(pr.position) || ~isequal(size(pr.position,2),2)
                 error('Invalid Position!')
             end
+            % TODO position must be integers
             self.position = pr.position;
             self.tag = pr.tag;
         end
@@ -26,7 +27,12 @@ classdef RoiM
             mask = zeros(imageSize);
             pos = self.position;
             linearInd = sub2ind(imageSize, pos(:,2),pos(:,1));
-            mask(linearInd) = 1;
+            try
+                mask(linearInd) = 1;
+            catch
+                disp('create mask error')
+            end
+            
         end
 
         function [mask,offset] = createSmallMask(self,extend)

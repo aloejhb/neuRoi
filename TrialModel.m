@@ -639,37 +639,19 @@ classdef TrialModel < handle
             end
         end
 
+        function importRoisFromMaskFile(self,filePath)
+            maskImg = imread(filePath);
+            self.importRoisFromMask(maskImg);
+        end
         
-        function importRoisFromMask(self,filePath)
-            maskImg = movieFunc.readTiff(filePath);
+        
+        function importRoisFromMask(self,maskImg)
             if ~isequal(size(maskImg),self.getMapSize())
                 error(['Image size of mask does not match the map size ' ...
                        '(pixel size in x and y)!'])
             end
-            tagArray = unique(maskImg);
-            roiArray = RoiFreehand.empty();
-            for k=1:length(tagArray)
-                tag = tagArray(k);
-                if tag ~= 0
-                    mask = maskImg == tag;
-                    % poly = roiFunc.mask2poly(mask);
-                    poly = bwboundaries(mask);
-                    % if length(poly) > 1
-                    %     % TODO If the mask corresponds multiple polygon,
-                    %     % for simplicity,
-                    %     % take the largest polygon
-                    %     warning(sprintf('ROI %d has multiple components, only taking the largest one.',tag))
-                    %     pidx = find([poly.Length] == max([poly.Length]));
-                    %     poly = poly(pidx);
-                    % end
-                    %position = [poly.X',poly.Y'];
-                    position = [poly{1}(:,2),poly{1}(:,1)];
-                    roi = RoiFreehand(position);
-                    roi.tag = double(tag);
-                    roiArray(end+1) = roi;
-                end
-            end
-            self.insertRoiArray(roiArray,'replace')
+            roiArr = roiFunc.RoiArray(size(maskImg),'maskImg',maskImg);
+            self.insertRoiArray(roiArr.roiList,'replace')
         end
         
         function importRoisFromImageJ(self,filePath)

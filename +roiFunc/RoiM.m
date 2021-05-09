@@ -29,11 +29,11 @@ classdef RoiM
             mask(linearInd) = 1;
         end
 
-        function [mask,offset] = createSmallMask(self)
-            offset = min(self.position,[],1);
-            roiSize = ceil(max(self.position,[],1) - offset) + 1;
+        function [mask,offset] = createSmallMask(self,extend)
+            offset = min(self.position,[],1) - 1 - extend;
+            roiSize = ceil(max(self.position,[],1) - offset) + extend;
             mask = zeros(roiSize(end:-1:1));
-            posShifted = self.position - offset + 1;
+            posShifted = self.position - offset;
             linearInd = sub2ind(roiSize(end:-1:1), posShifted(:,2),posShifted(:,1));
             mask(linearInd) = 1;
         end
@@ -67,11 +67,13 @@ classdef RoiM
                 end
             end
             
-            [smallMask,offset] = self.createSmallMask();
-            plyPos = bwboundaries(smallMask);
-            pixelPosition = plyPos{1}+offset;
+            dilutePix = 1;
+            [smallMask,offset] = self.createSmallMask(dilutePix);
+            smallMaskDil = imdilate(smallMask,strel('disk', dilutePix));
+            plyPos = bwboundaries(smallMaskDil,8,'noholes');
+            pixelPosition = plyPos{1}+offset(end:-1:1);
             axesPosition = getAxesPosition(parentAxes,pixelPosition);
-            roiPatch = patch(axesPosition(:,1),axesPosition(:,2),ptcolor,'Parent',parent);
+            roiPatch = patch(axesPosition(:,2),axesPosition(:,1),ptcolor,'Parent',parent);
             set(roiPatch,'FaceAlpha',0.5)
             set(roiPatch,'LineStyle','none');
             ptTag = RoiFreehand.getPatchTag(self.tag);
@@ -156,8 +158,8 @@ classdef RoiM
                 imageSize = size(getimage(parent));
                 plpos = getPixelPosition(parent, ...
                                        axesPosition);
-                offset = floor(min(plpos,[],1));
-                plpos_small = plpos - offset + 1;
+                offset = floor(min(plpos,[],1)) - 1;
+                plpos_small = plpos - offset;
                 roiSize = ceil(max(plpos,[],1) - offset);
                 mask = poly2mask(plpos_small(:,1),plpos_small(:,2),...
                                  roiSize(2),roiSize(1));

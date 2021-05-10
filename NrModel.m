@@ -134,6 +134,7 @@ classdef NrModel < handle
             addParameter(pa,'mcWithinTrial',false);
             addParameter(pa,'mcBetweenTrial',true);
             addParameter(pa,'mcBTTemplateIdx',1);
+            addParameter(pa,'mcBTAlgorithm','featureBased')
             addParameter(pa,'binning',false);
             addParameter(pa,'binDir','');
             addParameter(pa,'binParam',[]);
@@ -182,7 +183,7 @@ classdef NrModel < handle
                 for planeNum=1:self.expInfo.nPlane
                     self.alignTrialBatch(templateRawName,...
                                          'planeNum',planeNum,...
-                                         'alignOption',{'plotFig',false});
+                                         'mcBTAlgorithm',pr.mcBTAlgorithm);
                 end
             end
         end
@@ -530,6 +531,7 @@ classdef NrModel < handle
             pa = inputParser;
             addParameter(pa,'planeNum',1,@isnumeric);
             addParameter(pa,'fileIdx','all',@(x) ischar(x)|ismatrix(x));
+            addParameter(pa,'algorithm','featureBased');
             addParameter(pa,'alignOption',{},@iscell);
             parse(pa,varargin{:})
             pr = pa.Results;
@@ -582,6 +584,7 @@ classdef NrModel < handle
             alignResult = batch.alignTrials(inDir,...
                                             anatomyFileList, ...
                                             templateName,...
+                                            'algorithm',pr.algorithm,...
                                             'stackFilePath',...
                                             stackFilePath,...
                                             pr.alignOption{:});

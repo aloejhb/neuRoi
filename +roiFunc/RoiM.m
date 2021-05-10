@@ -116,6 +116,10 @@ classdef RoiM
                 end
             end
         end
+
+        function transformPosition(self,tform)
+            self.position = round(tformfwd(self.position));
+        end
         
         function offsetYx = matchPos(self,inputImg,tempImg, ...
                                         windowSize,fitGauss,normFlag,plotFlag)

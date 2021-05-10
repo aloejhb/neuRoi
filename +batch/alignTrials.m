@@ -8,9 +8,10 @@ pa = inputParser;
 addRequired(pa,'inDir',@ischar);
 addRequired(pa,'inFileList',@iscell);
 addRequired(pa,'templateName',@ischar);
+addParameter(pa,'algorithm','rigid',@ischar);
 addParameter(pa,'outFilePath','',@ischar);
 addParameter(pa,'stackFilePath','',@ischar);
-addParameter(pa,'plotFig',false);
+addParameter(pa,'metricThreshold',1000)
 addParameter(pa,'climit',[0 1]);
 addParameter(pa,'debug',false);
 parse(pa,inDir,inFileList,templateName,varargin{:})
@@ -28,26 +29,40 @@ else
 end
 templateAna = movieFunc.readTiff(templatePath);
 
-offsetYxMat = zeros(nFile,2);
-
-for k=1:nFile
-    offsetYx = movieFunc.alignImage(anatomyArray(:,:,k),templateAna,pr.debug);
-                          
-    offsetYxMat(k,:) = offsetYx;
-    if pr.plotFig
-        fig = figure;
-        fig.Name = [num2str(k) ': ' pr.inFileList{k}];
-        newAna = movieFunc.shiftImage(anatomyArray(:,:,k),offsetYx);
-        tshow = imadjust(mat2gray(templateAna),pr.climit);
-        nshow = imadjust(mat2gray(newAna),pr.climit);
-        imshowpair(tshow,nshow,'Scaling','joint');
+if strcmp(pr.algorithm,'rigid')
+    offsetYxMat = zeros(nFile,2);
+    for k=1:nFile
+        offsetYx = movieFunc.alignImage(anatomyArray(:,:,k),templateAna,pr.debug);
+        offsetYxMat(k,:) = offsetYx;
     end
+    alignResult.offsetYxMat = offsetYxMat;
+elseif strcmp(pr.algorithm,'featureBased')
+    zlimit = [0, 0.3];
+    original = templateAna;
+    original = imadjust(original,zlimit);
+    disp(pr.metricThreshold)
+    ptsOriginal  = detectSURFFeatures(original,'MetricThreshold',pr.metricThreshold);
+    [featuresOriginal,validPtsOriginal]  = extractFeatures(original,ptsOriginal);
+    tformList = affine2d.empty();
+    for k=1:nFile
+        distorted = anatomyArray(:,:,k);
+        distorted = imadjust(distorted,zlimit);
+        [tform,success] = movieFunc.registerImage(distorted,'featuresOriginal',featuresOriginal,'validPtsOriginal',validPtsOriginal);
+        if ~success
+            message = sprintf('Anatomy not matched: distorted: %s, template: %s',pr.inFileList{k},pr.templateName);
+            disp(message)
+        end
+        tformList(k) = tform;
+    end
+    alignResult.tformList = tformList;
+else
+    error('Algorithm should be either rigid or featureBased!')
 end
 
+alignResult.algorithm = pr.algorithm;
 alignResult.inDir = pr.inDir;
 alignResult.inFileList = pr.inFileList;
 alignResult.templateName = pr.templateName;
-alignResult.offsetYxMat = offsetYxMat;
 
 % Save alignment result
 if length(pr.outFilePath)
@@ -55,7 +70,12 @@ if length(pr.outFilePath)
 end
 
 if nargout == 2 | length(pr.stackFilePath)
-    alignedStack = shiftStack(anatomyArray,offsetYxMat);
+    if strcmp(pr.algorithm,'rigid')
+        alignedStack = shiftStack(anatomyArray,offsetYxMat,pr.algorithm);
+    else
+        alignedStack = shiftStack(anatomyArray,tformList,pr.algorithm);
+    end
+    
     if length(pr.stackFilePath)
         movieFunc.saveTiff(alignedStack, ...
                            pr.stackFilePath);
@@ -65,9 +85,19 @@ if nargout == 2 | length(pr.stackFilePath)
     end
 end
 
-function alignedStack = shiftStack(stack,offsetYxMat)
+function alignedStack = shiftStack(stack,tformList,algorithm)
 alignedStack = stack;
+if strcmp(algorithm,'featureBased')
+    outputView = imref2d(size(alignedStack(:,:,1)));
+end
 for k=1:size(stack,3)
-    yxShift = offsetYxMat(k,:);
-    alignedStack(:,:,k) = circshift(alignedStack(:,:,k),yxShift);
+    if strcmp(algorithm,'rigid')
+        offsetYxMat = tformList;
+        yxShift = offsetYxMat(k,:);
+        alignedStack(:,:,k) = circshift(alignedStack(:,:,k),yxShift);
+    elseif strcmp(algorithm,'featureBased')
+        alignedStack(:,:,k) = imwarp(alignedStack(:,:,k),tformList(k),...
+                                     'OutputView',outputView);
+    end
+    
 end

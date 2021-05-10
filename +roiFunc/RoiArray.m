@@ -26,7 +26,13 @@ classdef RoiArray
                     end
                 end
             end
-            
+            end
+
+        function transformRois(tform)
+        for k=1:length(self.roiList)
+            roi = self.roiList(k);
+            roi.transformPosition(tform)
+        end
         end
 
     end
